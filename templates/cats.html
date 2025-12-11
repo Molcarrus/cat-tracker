@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}My Cats - Cat Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .add-form {
+        display: none;
+    }
+
+    .add-form.show {
+        display: block;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 2rem;
+    }
+
+    .image-upload {
+        width: 200px;
+        height: 200px;
+        border: 3px dashed var(--border-color);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+        position: relative;
+        background: var(--bg-tertiary);
+        transition: border-color 0.2s;
+    }
+
+    .image-upload:hover {
+        border-color: var(--accent-primary);
+    }
+
+    .image-upload input {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .image-upload img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .image-upload .placeholder {
+        text-align: center;
+        color: var(--text-muted);
+    }
+
+    .image-upload .placeholder span {
+        display: block;
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .cats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .cat-card {
+        background: var(--bg-secondary);
+        border-radius: 16px;
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+        box-shadow: 0 2px 8px var(--shadow);
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .cat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px var(--shadow-hover);
+    }
+
+    .cat-image {
+        width: 100%;
+        height: 200px;
+        overflow: hidden;
+        background: var(--bg-tertiary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+    }
+
+    .cat-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .cat-info {
+        padding: 1rem;
+    }
+
+    .cat-info h3 {
+        margin: 0 0 0.5rem;
+        font-size: 1.25rem;
+        color: var(--text-primary);
+    }
+
+    .cat-info .description {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin: 0 0 0.5rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .cat-stats {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.85rem;
+    }
+
+    .cat-stats span {
+        color: var(--text-muted);
+    }
+
+    .cat-stats .count {
+        color: var(--accent-primary);
+        font-weight: 500;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+
+    .empty-state .emoji {
+        font-size: 4rem;
+        display: block;
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 600px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .image-upload {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🐱 My Cats</h1>
+    <button class="btn btn-primary" onclick="toggleAddForm()">+ Add New Cat</button>
+</div>
+
+<!-- Add Cat Form -->
+<div class="section add-form" id="addForm">
+    <h2>Add a New Cat</h2>
+    <form action="/add-cat" method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <div class="image-upload" id="imageUpload">
+                <div class="placeholder" id="placeholder">
+                    <span>📷</span>
+                    Add Photo
+                </div>
+                <img id="preview" style="display: none;">
+                <input type="file" name="image" accept="image/*" onchange="previewImage(this)">
+            </div>
+
+            <div>
+                <div class="form-group">
+                    <label for="name">Name *</label>
+                    <input type="text" name="name" id="name" required placeholder="e.g., Whiskers">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea name="description" id="description" rows="3" 
+                              placeholder="e.g., Orange tabby with white paws, very friendly"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save Cat</button>
+                <button type="button" class="btn btn-secondary" onclick="toggleAddForm()">Cancel</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Cats Grid -->
+<div class="cats-grid">
+    {% for cat in cats %}
+    <a href="/cats/{{ cat.id }}" class="cat-card">
+        <div class="cat-image">
+            {% if cat.image_src %}
+            <img src="{{ cat.image_src }}" alt="{{ cat.name }}">
+            {% else %}
+            🐱
+            {% endif %}
+        </div>
+        <div class="cat-info">
+            <h3>{{ cat.name }}</h3>
+            {% if cat.description %}
+            <p class="description">{{ cat.description }}</p>
+            {% endif %}
+            <div class="cat-stats">
+                <span><span class="count">{{ cat.sighting_count }}</span> sighting{{ 's' if cat.sighting_count != 1 else '' }}</span>
+                <span><span class="count">{{ cat.photo_count }}</span> photo{{ 's' if cat.photo_count != 1 else '' }}</span>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+{% if not cats %}
+<div class="empty-state">
+    <span class="emoji">🐱</span>
+    <h3>No cats yet!</h3>
+    <p>Add your first cat to start tracking sightings.</p>
+</div>
+{% endif %}
+
+<script>
+function toggleAddForm() {
+    document.getElementById('addForm').classList.toggle('show');
+}
+
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('preview').style.display = 'block';
+            document.getElementById('placeholder').style.display = 'none';
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}

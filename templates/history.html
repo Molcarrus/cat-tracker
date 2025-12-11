@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Sighting History - Cat Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .subtitle {
+        color: var(--text-secondary);
+        margin-top: 0;
+        margin-bottom: 2rem;
+    }
+
+    .day-group {
+        margin-bottom: 2rem;
+    }
+
+    .day-group h2 {
+        font-size: 1.1rem;
+        color: var(--accent-primary);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--accent-primary);
+    }
+
+    .sighting-item {
+        display: grid;
+        grid-template-columns: 60px 1fr auto;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        text-decoration: none;
+        color: inherit;
+        box-shadow: 0 2px 8px var(--shadow);
+        border: 1px solid var(--border-color);
+        margin-bottom: 0.75rem;
+        transition: transform 0.2s;
+        align-items: center;
+    }
+
+    .sighting-item:hover {
+        transform: translateX(4px);
+    }
+
+    .cat-thumb {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: var(--bg-tertiary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .sighting-info h3 {
+        margin: 0 0 0.25rem;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+    }
+
+    .sighting-info .time {
+        color: var(--accent-primary);
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .sighting-info .detail {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        margin-left: 0.5rem;
+    }
+
+    .sighting-info .notes {
+        margin: 0.25rem 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-style: italic;
+    }
+
+    .sighting-thumb {
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        object-fit: cover;
+        cursor: pointer;
+    }
+
+    .empty {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--bg-secondary);
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+    }
+
+    .empty span {
+        font-size: 4rem;
+        display: block;
+        margin-bottom: 1rem;
+    }
+
+    .empty h3 {
+        margin: 1rem 0 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .empty p {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+
+    /* Image modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.show {
+        display: flex;
+    }
+
+    .modal img {
+        max-width: 90%;
+        max-height: 90%;
+        border-radius: 8px;
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 2rem;
+        color: white;
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>📅 Sighting History</h1>
+<p class="subtitle">You've recorded {{ total }} sighting{{ 's' if total != 1 else '' }} total</p>
+
+{% for date, sightings in grouped_sightings.items() %}
+<div class="day-group">
+    <h2>{{ date }}</h2>
+    
+    {% for sighting in sightings %}
+    <a href="/cats/{{ sighting.cat_id }}" class="sighting-item">
+        {% if sighting.cat_image_src %}
+        <img src="{{ sighting.cat_image_src }}" alt="{{ sighting.cat_name }}" class="cat-thumb">
+        {% else %}
+        <div class="cat-thumb">🐱</div>
+        {% endif %}
+        
+        <div class="sighting-info">
+            <h3>{{ sighting.cat_name }}</h3>
+            <span class="time">🕐 {{ sighting.display_time }}</span>
+            {% if sighting.location %}
+            <span class="detail">📍 {{ sighting.location }}</span>
+            {% endif %}
+            {% if sighting.notes %}
+            <p class="notes">{{ sighting.notes }}</p>
+            {% endif %}
+        </div>
+
+        {% if sighting.sighting_image_src %}
+        <img src="{{ sighting.sighting_image_src }}" alt="Sighting" class="sighting-thumb" onclick="event.preventDefault(); showModal(this.src)">
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% endfor %}
+
+{% if not grouped_sightings %}
+<div class="empty">
+    <span>📭</span>
+    <h3>No sightings yet</h3>
+    <p>Start logging your cat sightings from the home page!</p>
+    <a href="/" class="btn btn-primary">Log a Sighting</a>
+</div>
+{% endif %}
+
+<!-- Image Modal -->
+<div class="modal" id="imageModal" onclick="hideModal()">
+    <button class="modal-close" onclick="hideModal()">×</button>
+    <img id="modalImage" src="" alt="Full size">
+</div>
+
+<script>
+function showModal(src) {
+    document.getElementById('modalImage').src = src;
+    document.getElementById('imageModal').classList.add('show');
+}
+
+function hideModal() {
+    document.getElementById('imageModal').classList.remove('show');
+}
+</script>
+{% endblock %}
