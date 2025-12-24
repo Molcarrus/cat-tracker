@@ -7,7 +7,6 @@
     <style>
         /* ============== CSS VARIABLES ============== */
         :root {
-            /* Light Mode */
             --bg-primary: #f5f5f5;
             --bg-secondary: #ffffff;
             --bg-tertiary: #f8f9fa;
@@ -27,7 +26,6 @@
         }
 
         [data-theme="dark"] {
-            /* Dark Mode */
             --bg-primary: #1a1a2e;
             --bg-secondary: #16213e;
             --bg-tertiary: #1f2940;
@@ -46,7 +44,6 @@
             --shadow-hover: rgba(0, 0, 0, 0.4);
         }
 
-        /* ============== RESET & BASE ============== */
         * {
             margin: 0;
             padding: 0;
@@ -61,7 +58,6 @@
             transition: background 0.3s, color 0.3s;
         }
 
-        /* ============== NAVIGATION ============== */
         nav {
             background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
             padding: 1rem;
@@ -104,7 +100,6 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
-        /* ============== THEME TOGGLE ============== */
         .theme-toggle {
             background: rgba(255, 255, 255, 0.2);
             border: none;
@@ -125,14 +120,12 @@
             transform: scale(1.1);
         }
 
-        /* ============== MAIN CONTENT ============== */
         main {
             max-width: 1000px;
             margin: 0 auto;
             padding: 2rem;
         }
 
-        /* ============== SECTION CARDS ============== */
         .section {
             background: var(--bg-secondary);
             border-radius: 16px;
@@ -142,18 +135,15 @@
             border: 1px solid var(--border-color);
         }
 
-        h1 {
+        h1, h2 {
             color: var(--text-primary);
-            margin-bottom: 0.5rem;
         }
 
         h2 {
-            color: var(--text-primary);
             margin-bottom: 1rem;
             font-size: 1.25rem;
         }
 
-        /* ============== BUTTONS ============== */
         .btn {
             display: inline-block;
             padding: 0.75rem 1.5rem;
@@ -190,7 +180,6 @@
             font-size: 0.9rem;
         }
 
-        /* ============== FORMS ============== */
         .form-group {
             margin-bottom: 1rem;
         }
@@ -223,33 +212,26 @@
             border-color: var(--accent-primary);
         }
 
-        .form-group input::placeholder,
-        .form-group textarea::placeholder {
-            color: var(--text-muted);
-        }
-
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
         }
 
-        /* ============== UTILITIES ============== */
         .empty {
             text-align: center;
             color: var(--text-muted);
             padding: 2rem;
         }
 
-        .text-muted {
+        /* Timezone info */
+        .timezone-info {
+            font-size: 0.8rem;
             color: var(--text-muted);
+            text-align: right;
+            margin-bottom: 0.5rem;
         }
 
-        .text-secondary {
-            color: var(--text-secondary);
-        }
-
-        /* ============== RESPONSIVE ============== */
         @media (max-width: 600px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -287,7 +269,161 @@
     </main>
 
     <script>
-        // Theme Toggle
+        // ============== TIMEZONE UTILITIES ==============
+        
+        // Get user's timezone
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        // Format date in user's locale
+        function formatDate(isoString) {
+            if (!isoString) return '';
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleDateString(undefined, {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            } catch (e) {
+                return isoString;
+            }
+        }
+        
+        // Format time in user's locale
+        function formatTime(isoString) {
+            if (!isoString) return '';
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleTimeString(undefined, {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            } catch (e) {
+                return '';
+            }
+        }
+        
+        // Format full datetime
+        function formatDateTime(isoString) {
+            if (!isoString) return '';
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleString(undefined, {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            } catch (e) {
+                return isoString;
+            }
+        }
+        
+        // Format short date (for display)
+        function formatShortDate(isoString) {
+            if (!isoString) return '';
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            } catch (e) {
+                return isoString;
+            }
+        }
+        
+        // Format relative time (e.g., "2 hours ago")
+        function formatRelativeTime(isoString) {
+            if (!isoString) return '';
+            try {
+                const date = new Date(isoString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins} min ago`;
+                if (diffHours < 24) return `${diffHours} hr ago`;
+                if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+                return formatShortDate(isoString);
+            } catch (e) {
+                return isoString;
+            }
+        }
+        
+        // Check if date is today in user's timezone
+        function isToday(isoString) {
+            if (!isoString) return false;
+            try {
+                const date = new Date(isoString);
+                const today = new Date();
+                return date.toDateString() === today.toDateString();
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // Format date for grouping (e.g., "Monday, December 15, 2024")
+        function formatGroupDate(isoString) {
+            if (!isoString) return 'Unknown Date';
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleDateString(undefined, {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            } catch (e) {
+                return 'Unknown Date';
+            }
+        }
+        
+        // Update all time elements on page load
+        function updateAllTimes() {
+            // Update elements with data-iso attribute
+            document.querySelectorAll('[data-iso]').forEach(el => {
+                const iso = el.getAttribute('data-iso');
+                const format = el.getAttribute('data-format') || 'datetime';
+                
+                switch (format) {
+                    case 'date':
+                        el.textContent = formatShortDate(iso);
+                        break;
+                    case 'time':
+                        el.textContent = formatTime(iso);
+                        break;
+                    case 'datetime':
+                        el.textContent = formatDateTime(iso);
+                        break;
+                    case 'relative':
+                        el.textContent = formatRelativeTime(iso);
+                        break;
+                    case 'group':
+                        el.textContent = formatGroupDate(iso);
+                        break;
+                }
+            });
+            
+            // Update timezone display
+            document.querySelectorAll('.timezone-display').forEach(el => {
+                el.textContent = userTimezone;
+            });
+        }
+        
+        // Run on page load
+        document.addEventListener('DOMContentLoaded', updateAllTimes);
+        
+        // ============== THEME TOGGLE ==============
         function toggleTheme() {
             const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');
