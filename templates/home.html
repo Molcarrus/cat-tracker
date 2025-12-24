@@ -31,7 +31,6 @@
         flex: 1;
     }
 
-    /* Image upload for sighting */
     .image-upload-small {
         display: flex;
         align-items: center;
@@ -66,7 +65,6 @@
         display: none;
     }
 
-    /* Sighting cards */
     .sighting-card {
         display: flex;
         justify-content: space-between;
@@ -76,6 +74,10 @@
         border-radius: 12px;
         margin-bottom: 0.75rem;
         border: 1px solid var(--border-color);
+    }
+
+    .sighting-card.hidden {
+        display: none;
     }
 
     .sighting-info {
@@ -105,8 +107,9 @@
     }
 
     .sighting-details .time {
-        color: var(--text-secondary);
+        color: var(--accent-primary);
         font-size: 0.9rem;
+        font-weight: 500;
     }
 
     .sighting-details .detail {
@@ -138,7 +141,6 @@
         color: var(--danger-btn);
     }
 
-    /* Cat overview pills */
     .cats-overview {
         display: flex;
         flex-wrap: wrap;
@@ -176,7 +178,6 @@
         object-fit: cover;
     }
 
-    /* Image modal */
     .modal {
         display: none;
         position: fixed;
@@ -210,13 +211,18 @@
         border: none;
         cursor: pointer;
     }
+
+    #todayCount {
+        display: inline;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="date-header">
     <h1>🚶 Today's Walk</h1>
-    <p>{{ today }}</p>
+    <p id="todayDate"></p>
+    <p class="timezone-info">Timezone: <span class="timezone-display"></span></p>
 </div>
 
 <!-- Log a Sighting -->
@@ -229,9 +235,7 @@
             <select name="cat_id" id="cat_id" required>
                 <option value="">Select a cat...</option>
                 {% for cat in cats %}
-                <option value="{{ cat.id }}">
-                    {{ cat.name }} {% if cat.id in seen_cat_ids %}✓{% endif %}
-                </option>
+                <option value="{{ cat.id }}" data-cat-id="{{ cat.id }}">{{ cat.name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -247,7 +251,6 @@
             </div>
         </div>
 
-        <!-- Sighting Photo -->
         <div class="form-group">
             <label>Photo of this sighting (optional)</label>
             <div class="image-upload-small">
@@ -262,7 +265,6 @@
         <button type="submit" class="btn btn-primary">🐾 Log Sighting</button>
     </form>
 
-    <!-- Quick Add Cat -->
     <form action="/quick-add-cat" method="POST" class="quick-add-form">
         <input type="text" name="name" placeholder="New cat's name" required>
         <button type="submit" class="btn btn-secondary">+ Add Cat</button>
@@ -271,11 +273,11 @@
 
 <!-- Today's Sightings -->
 <div class="section">
-    <h2>Today's Sightings ({{ sightings|length }})</h2>
+    <h2>Today's Sightings (<span id="todayCount">0</span>)</h2>
     
-    {% if sightings %}
+    <div id="sightingsList">
         {% for sighting in sightings %}
-        <div class="sighting-card">
+        <div class="sighting-card" data-iso="{{ sighting.iso_date }}" data-cat-id="{{ sighting.cat_id }}">
             <div class="sighting-info">
                 {% if sighting.cat_image_src %}
                 <img src="{{ sighting.cat_image_src }}" alt="{{ sighting.cat_name }}" class="cat-thumb">
@@ -284,7 +286,7 @@
                 {% endif %}
                 <div class="sighting-details">
                     <h3>{{ sighting.cat_name }}</h3>
-                    <p class="time">🕐 {{ sighting.display_time }}</p>
+                    <p class="time">🕐 <span data-iso="{{ sighting.iso_date }}" data-format="time"></span></p>
                     {% if sighting.location %}
                     <p class="detail">📍 {{ sighting.location }}</p>
                     {% endif %}
@@ -301,24 +303,22 @@
             </form>
         </div>
         {% endfor %}
-    {% else %}
-        <p class="empty">No cats spotted yet today. Time for a walk! 🚶</p>
-    {% endif %}
+    </div>
+    
+    <p class="empty" id="emptyMessage" style="display: none;">No cats spotted yet today. Time for a walk! 🚶</p>
 </div>
 
 <!-- Cat Overview -->
 <div class="section">
     <h2>Your Cats</h2>
-    <div class="cats-overview">
+    <div class="cats-overview" id="catsOverview">
         {% for cat in cats %}
-        <a href="/cats/{{ cat.id }}" class="cat-pill {% if cat.id in seen_cat_ids %}seen{% endif %}">
+        <a href="/cats/{{ cat.id }}" class="cat-pill" data-cat-id="{{ cat.id }}">
             {% if cat.image_src %}
             <img src="{{ cat.image_src }}" alt="">
             {% endif %}
             {{ cat.name }}
-            {% if cat.id in seen_cat_ids %}
-            <span>✓</span>
-            {% endif %}
+            <span class="seen-check" style="display: none;">✓</span>
         </a>
         {% endfor %}
         
@@ -335,6 +335,70 @@
 </div>
 
 <script>
+// Set today's date in user's locale
+document.getElementById('todayDate').textContent = new Date().toLocaleDateString(undefined, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+});
+
+// Filter sightings to show only today's in user's timezone
+function filterTodaySightings() {
+    const sightingCards = document.querySelectorAll('.sighting-card');
+    const seenCatIds = new Set();
+    let todayCount = 0;
+    
+    sightingCards.forEach(card => {
+        const iso = card.getAttribute('data-iso');
+        const catId = card.getAttribute('data-cat-id');
+        
+        if (isToday(iso)) {
+            card.classList.remove('hidden');
+            seenCatIds.add(catId);
+            todayCount++;
+        } else {
+            card.classList.add('hidden');
+        }
+    });
+    
+    // Update count
+    document.getElementById('todayCount').textContent = todayCount;
+    
+    // Show/hide empty message
+    document.getElementById('emptyMessage').style.display = todayCount === 0 ? 'block' : 'none';
+    
+    // Update cat pills to show which ones were seen today
+    document.querySelectorAll('.cat-pill').forEach(pill => {
+        const catId = pill.getAttribute('data-cat-id');
+        const checkMark = pill.querySelector('.seen-check');
+        
+        if (seenCatIds.has(catId)) {
+            pill.classList.add('seen');
+            if (checkMark) checkMark.style.display = 'inline';
+        } else {
+            pill.classList.remove('seen');
+            if (checkMark) checkMark.style.display = 'none';
+        }
+    });
+    
+    // Update select options to show checkmarks
+    document.querySelectorAll('#cat_id option').forEach(option => {
+        const catId = option.getAttribute('data-cat-id');
+        if (catId && seenCatIds.has(catId)) {
+            if (!option.textContent.includes('✓')) {
+                option.textContent = option.textContent + ' ✓';
+            }
+        }
+    });
+}
+
+// Run after times are updated
+document.addEventListener('DOMContentLoaded', function() {
+    updateAllTimes();
+    filterTodaySightings();
+});
+
 function previewSightingImage(input) {
     if (input.files && input.files[0]) {
         var reader = new FileReader();
