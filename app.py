@@ -10,7 +10,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
 # Database configuration
 # Use PostgreSQL if DATABASE_URL is set (production), otherwise SQLite (local dev)
-DATABASE_URL = os.environ.get('postgresql://neondb_owner:npg_o2zRQ9clxALN@ep-mute-water-a7wvi4tk-pooler.ap-southeast-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require')
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
     # PostgreSQL
